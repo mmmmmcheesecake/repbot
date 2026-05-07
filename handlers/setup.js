@@ -42,6 +42,7 @@ module.exports = (client) => {
             reactionMessageId: msg.id,
             rolePLId: rolePL.id,
             roleENId: roleEN.id,
+            autoRoleId: '1497207039422894151',
             channels: {
                 pl: {
                     konwerter:    '1501699363989356604',
