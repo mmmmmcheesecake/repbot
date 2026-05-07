@@ -1,16 +1,23 @@
 const { EmbedBuilder } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 
-const PL_CHANNEL = 'visual-search';
-const EN_CHANNEL = 'visual-search-en';
 const API = 'https://replug24.com/api/visual-search';
+
+function loadConfig() {
+    try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8')); }
+    catch { return {}; }
+}
 
 module.exports = (client) => {
     client.on('messageCreate', async (message) => {
         if (message.author.bot) return;
 
-        const ch = message.channel.name;
-        const isEN = ch === EN_CHANNEL;
-        if (ch !== PL_CHANNEL && ch !== EN_CHANNEL) return;
+        const config = loadConfig();
+        const chId = message.channel.id;
+        const isPL = chId === config.channels?.pl?.visualSearch;
+        const isEN = chId === config.channels?.en?.visualSearch;
+        if (!isPL && !isEN) return;
 
         const attachment = message.attachments.first();
         if (!attachment || !attachment.contentType?.startsWith('image/')) return;
@@ -18,25 +25,22 @@ module.exports = (client) => {
         const thinking = await message.reply(isEN ? '🔍 Searching by image...' : '🔍 Szukam po zdjęciu...');
 
         try {
-            // Pobierz obraz z Discorda
             const imgRes = await fetch(attachment.url);
             const imgBuffer = await imgRes.arrayBuffer();
 
             const formData = new FormData();
-            const blob = new Blob([imgBuffer], { type: attachment.contentType });
-            formData.append('image', blob, attachment.name);
+            formData.append('image', new Blob([imgBuffer], { type: attachment.contentType }), attachment.name);
 
             const res = await fetch(API, { method: 'POST', body: formData });
             const data = await res.json();
 
             if (!res.ok || data?.error) {
-                return thinking.edit(isEN ? '❌ Search failed. Try another image.' : '❌ Wyszukiwanie nie powiodło się. Spróbuj innego zdjęcia.');
+                return thinking.edit(isEN ? '❌ Search failed. Try another image.' : '❌ Wyszukiwanie nie powiodło się.');
             }
 
             const results = data.results || data.items || [];
-
             if (!results.length) {
-                return thinking.edit(isEN ? '📭 No matches found.' : '📭 Brak wyników dla tego zdjęcia.');
+                return thinking.edit(isEN ? '📭 No matches found.' : '📭 Brak wyników.');
             }
 
             const lines = results.slice(0, 5).map((r, i) =>

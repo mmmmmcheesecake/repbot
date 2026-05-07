@@ -1,4 +1,4 @@
-const { PermissionFlagsBits, ChannelType, EmbedBuilder } = require('discord.js');
+const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -13,66 +13,17 @@ module.exports = (client) => {
         if (message.content !== '!setup') return;
         if (!message.member?.permissions.has(PermissionFlagsBits.Administrator)) return;
 
-        await message.reply('⏳ Konfigurowanie serwera...');
+        await message.reply('⏳ Konfigurowanie...');
 
         const guild = message.guild;
-        const everyone = guild.roles.everyone.id;
 
-        // Istniejące rangi po ID
         const rolePL = await guild.roles.fetch('1501690212827398175');
         const roleEN = await guild.roles.fetch('1497213401276092477');
+        if (!rolePL || !roleEN) return message.reply('❌ Nie znaleziono rang.');
 
-        if (!rolePL || !roleEN) {
-            return message.reply('❌ Nie znaleziono rang. Sprawdź ID w setup.js.');
-        }
+        const verifyCh = await guild.channels.fetch('1497196597207892012');
+        if (!verifyCh) return message.reply('❌ Nie znaleziono kanału verify.');
 
-        // Istniejący kanał #verify
-        const startCh = await guild.channels.fetch('1497196597207892012');
-        if (!startCh) return message.reply('❌ Nie znaleziono kanału verify.');
-
-        // Kategoria PL
-        let catPL = guild.channels.cache.find(c => c.name === '🇵🇱・polska' && c.type === ChannelType.GuildCategory)
-            ?? await guild.channels.create({
-                name: '🇵🇱・polska',
-                type: ChannelType.GuildCategory,
-                permissionOverwrites: [
-                    { id: everyone, deny: [PermissionFlagsBits.ViewChannel] },
-                    { id: rolePL.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles] },
-                ],
-            });
-
-        for (const name of ['konwerter', 'qc', 'tracking', 'visual-search', 'tickety']) {
-            if (!guild.channels.cache.find(c => c.name === name && c.parentId === catPL.id)) {
-                await guild.channels.create({
-                    name,
-                    type: ChannelType.GuildText,
-                    parent: catPL.id,
-                });
-            }
-        }
-
-        // Kategoria EN
-        let catEN = guild.channels.cache.find(c => c.name === '🇬🇧・english' && c.type === ChannelType.GuildCategory)
-            ?? await guild.channels.create({
-                name: '🇬🇧・english',
-                type: ChannelType.GuildCategory,
-                permissionOverwrites: [
-                    { id: everyone, deny: [PermissionFlagsBits.ViewChannel] },
-                    { id: roleEN.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles] },
-                ],
-            });
-
-        for (const name of ['converter', 'qc-en', 'tracking-en', 'visual-search-en', 'tickets']) {
-            if (!guild.channels.cache.find(c => c.name === name && c.parentId === catEN.id)) {
-                await guild.channels.create({
-                    name,
-                    type: ChannelType.GuildText,
-                    parent: catEN.id,
-                });
-            }
-        }
-
-        // Wiadomość startowa
         const embed = new EmbedBuilder()
             .setColor(0x111111)
             .setTitle('replug')
@@ -83,17 +34,32 @@ module.exports = (client) => {
             )
             .setFooter({ text: 'replug24.com' });
 
-        const msg = await startCh.send({ embeds: [embed] });
+        const msg = await verifyCh.send({ embeds: [embed] });
         await msg.react('🇵🇱');
         await msg.react('🇬🇧');
 
         saveConfig({
             reactionMessageId: msg.id,
-            startChannelId: startCh.id,
             rolePLId: rolePL.id,
             roleENId: roleEN.id,
+            channels: {
+                pl: {
+                    konwerter:    '1501699363989356604',
+                    qc:           '1501699802738589706',
+                    visualSearch: '1501700275310956564',
+                    tracking:     '1501700750634651761',
+                    tickets:      '1501696553247571988',
+                },
+                en: {
+                    konwerter:    '1501001540524183562',
+                    qc:           '1501002051096809492',
+                    visualSearch: '1501002302796988496',
+                    tracking:     '1501186060720410664',
+                    tickets:      '1501192287210836039',
+                },
+            },
         });
 
-        await message.reply('✅ Setup gotowy! Kanały i rangi skonfigurowane.');
+        await message.reply('✅ Setup gotowy!');
     });
 };

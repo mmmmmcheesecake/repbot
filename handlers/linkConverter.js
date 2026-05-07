@@ -1,8 +1,13 @@
 const { EmbedBuilder } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 
-const PL_CHANNEL = 'konwerter';
-const EN_CHANNEL = 'converter';
 const REF = 'MGRSBE';
+
+function loadConfig() {
+    try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8')); }
+    catch { return {}; }
+}
 
 function extractUrl(text) {
     const match = text.match(/https?:\/\/[^\s]+/);
@@ -25,9 +30,11 @@ module.exports = (client) => {
     client.on('messageCreate', async (message) => {
         if (message.author.bot) return;
 
-        const ch = message.channel.name;
-        const isEN = ch === EN_CHANNEL;
-        if (ch !== PL_CHANNEL && ch !== EN_CHANNEL) return;
+        const config = loadConfig();
+        const chId = message.channel.id;
+        const isPL = chId === config.channels?.pl?.konwerter;
+        const isEN = chId === config.channels?.en?.konwerter;
+        if (!isPL && !isEN) return;
 
         const url = extractUrl(message.content);
         if (!url) return;
@@ -35,14 +42,12 @@ module.exports = (client) => {
         const platform = detectPlatform(url);
         if (!platform) return;
 
-        const usfansLink = buildUsfansLink(url);
-
         const embed = new EmbedBuilder()
             .setColor(0x111111)
             .setTitle(isEN ? '🔗 Link converted' : '🔗 Skonwertowany link')
             .addFields(
                 { name: isEN ? 'Platform' : 'Platforma', value: platform, inline: true },
-                { name: 'USFans', value: `[${isEN ? 'Open on USFans →' : 'Otwórz na USFans →'}](${usfansLink})`, inline: true },
+                { name: 'USFans', value: `[${isEN ? 'Open on USFans →' : 'Otwórz na USFans →'}](${buildUsfansLink(url)})`, inline: true },
             )
             .setFooter({ text: `replug24.com • ref: ${REF}` });
 

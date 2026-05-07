@@ -1,9 +1,14 @@
 const { EmbedBuilder } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 
-const PL_CHANNEL = 'qc';
-const EN_CHANNEL = 'qc-en';
 const API = 'https://replug24.com/api/qc';
 const IMG_API = 'https://replug24.com/api/qcimg';
+
+function loadConfig() {
+    try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8')); }
+    catch { return {}; }
+}
 
 function b64url(s) {
     return Buffer.from(s).toString('base64')
@@ -18,9 +23,11 @@ module.exports = (client) => {
     client.on('messageCreate', async (message) => {
         if (message.author.bot) return;
 
-        const ch = message.channel.name;
-        const isEN = ch === EN_CHANNEL;
-        if (ch !== PL_CHANNEL && ch !== EN_CHANNEL) return;
+        const config = loadConfig();
+        const chId = message.channel.id;
+        const isPL = chId === config.channels?.pl?.qc;
+        const isEN = chId === config.channels?.en?.qc;
+        if (!isPL && !isEN) return;
 
         const urlMatch = message.content.match(/https?:\/\/[^\s]+/);
         if (!urlMatch) return;
@@ -37,30 +44,25 @@ module.exports = (client) => {
             }
 
             if (!data.sets?.length) {
-                return thinking.edit(isEN ? '📭 No QC photos found for this product.' : '📭 Brak zdjęć QC dla tego produktu.');
+                return thinking.edit(isEN ? '📭 No QC photos found.' : '📭 Brak zdjęć QC dla tego produktu.');
             }
 
-            const firstSet = data.sets[0];
-            const firstPhoto = firstSet.photos[0];
+            const firstPhoto = data.sets[0].photos[0];
+            const imgUrl = proxyImg(firstPhoto.url);
 
-            // Embed z pierwszym zdjęciem i podsumowaniem
-            const embed = new EmbedBuilder()
-                .setColor(0x111111)
-                .setTitle(isEN
-                    ? `QC Photos — ${data.totalPhotos} photos from ${data.sources.join(', ')}`
-                    : `Zdjęcia QC — ${data.totalPhotos} zdjęć z ${data.sources.join(', ')}`)
-                .setImage(proxyImg(firstPhoto.url.includes('qcimg') ? productUrl : firstPhoto.url))
-                .setFooter({ text: `${firstSet.sourceLabel} • replug24.com` });
-
-            // Linki do wszystkich setów
-            const links = data.sets.map(s =>
+            const lines = data.sets.map(s =>
                 `**${s.sourceLabel}** — ${s.photos.length} ${isEN ? 'photos' : 'zdjęć'}`
             ).join('\n');
 
-            await thinking.edit({
-                content: links,
-                embeds: [embed],
-            });
+            const embed = new EmbedBuilder()
+                .setColor(0x111111)
+                .setTitle(isEN
+                    ? `QC Photos — ${data.totalPhotos} from ${data.sources.join(', ')}`
+                    : `Zdjęcia QC — ${data.totalPhotos} z ${data.sources.join(', ')}`)
+                .setImage(imgUrl)
+                .setFooter({ text: `${data.sets[0].sourceLabel} • replug24.com` });
+
+            await thinking.edit({ content: lines, embeds: [embed] });
 
         } catch (e) {
             console.error(e);
