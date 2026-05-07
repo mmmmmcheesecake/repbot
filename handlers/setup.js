@@ -26,15 +26,9 @@ module.exports = (client) => {
             return message.reply('❌ Nie znaleziono rang. Sprawdź ID w setup.js.');
         }
 
-        // Kanał #verify — wszyscy widzą, nikt nie pisze
-        let startCh = guild.channels.cache.find(c => c.name === 'verify' && c.type === ChannelType.GuildText)
-            ?? await guild.channels.create({
-                name: 'verify',
-                type: ChannelType.GuildText,
-                permissionOverwrites: [
-                    { id: everyone, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AddReactions], deny: [PermissionFlagsBits.SendMessages] },
-                ],
-            });
+        // Istniejący kanał #verify
+        const startCh = await guild.channels.fetch('1497196597207892012');
+        if (!startCh) return message.reply('❌ Nie znaleziono kanału verify.');
 
         // Kategoria PL
         let catPL = guild.channels.cache.find(c => c.name === '🇵🇱・polska' && c.type === ChannelType.GuildCategory)
