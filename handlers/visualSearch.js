@@ -1,22 +1,15 @@
 const { EmbedBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+const config = require('../config');
 
 const API = 'https://replug24.com/api/visual-search';
-
-function loadConfig() {
-    try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8')); }
-    catch { return {}; }
-}
 
 module.exports = (client) => {
     client.on('messageCreate', async (message) => {
         if (message.author.bot) return;
 
-        const config = loadConfig();
         const chId = message.channel.id;
-        const isPL = chId === config.channels?.pl?.visualSearch;
-        const isEN = chId === config.channels?.en?.visualSearch;
+        const isPL = chId === config.channels.pl.visualSearch;
+        const isEN = chId === config.channels.en.visualSearch;
         if (!isPL && !isEN) return;
 
         const attachment = message.attachments.first();

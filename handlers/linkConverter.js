@@ -1,13 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+const config = require('../config');
 
 const REF = 'MGRSBE';
-
-function loadConfig() {
-    try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8')); }
-    catch { return {}; }
-}
 
 function extractUrl(text) {
     const match = text.match(/https?:\/\/[^\s]+/);
@@ -30,10 +24,9 @@ module.exports = (client) => {
     client.on('messageCreate', async (message) => {
         if (message.author.bot) return;
 
-        const config = loadConfig();
         const chId = message.channel.id;
-        const isPL = chId === config.channels?.pl?.konwerter;
-        const isEN = chId === config.channels?.en?.konwerter;
+        const isPL = chId === config.channels.pl.konwerter;
+        const isEN = chId === config.channels.en.konwerter;
         if (!isPL && !isEN) return;
 
         const url = extractUrl(message.content);

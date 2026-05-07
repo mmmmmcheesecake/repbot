@@ -1,14 +1,8 @@
 const { EmbedBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+const config = require('../config');
 
 const API = 'https://replug24.com/api/qc';
 const IMG_API = 'https://replug24.com/api/qcimg';
-
-function loadConfig() {
-    try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8')); }
-    catch { return {}; }
-}
 
 function b64url(s) {
     return Buffer.from(s).toString('base64')
@@ -23,10 +17,9 @@ module.exports = (client) => {
     client.on('messageCreate', async (message) => {
         if (message.author.bot) return;
 
-        const config = loadConfig();
         const chId = message.channel.id;
-        const isPL = chId === config.channels?.pl?.qc;
-        const isEN = chId === config.channels?.en?.qc;
+        const isPL = chId === config.channels.pl.qc;
+        const isEN = chId === config.channels.en.qc;
         if (!isPL && !isEN) return;
 
         const urlMatch = message.content.match(/https?:\/\/[^\s]+/);

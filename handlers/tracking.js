@@ -1,22 +1,15 @@
 const { EmbedBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+const config = require('../config');
 
 const TRACKING_REGEX = /\b([A-Z]{2}\d{9}[A-Z]{2}|[A-Z]{1,3}\d{8,30}|\d{10,30})\b/;
-
-function loadConfig() {
-    try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8')); }
-    catch { return {}; }
-}
 
 module.exports = (client) => {
     client.on('messageCreate', async (message) => {
         if (message.author.bot) return;
 
-        const config = loadConfig();
         const chId = message.channel.id;
-        const isPL = chId === config.channels?.pl?.tracking;
-        const isEN = chId === config.channels?.en?.tracking;
+        const isPL = chId === config.channels.pl.tracking;
+        const isEN = chId === config.channels.en.tracking;
         if (!isPL && !isEN) return;
 
         const match = message.content.match(TRACKING_REGEX);

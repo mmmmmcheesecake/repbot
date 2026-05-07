@@ -1,13 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
-const AUTO_ROLE_ID = '1497207039422894151';
-
-function loadConfig() {
-    try { return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')); }
-    catch { return {}; }
-}
+const config = require('../config');
 
 module.exports = (client) => {
     client.on('messageReactionAdd', async (reaction, user) => {
@@ -15,27 +6,22 @@ module.exports = (client) => {
         if (reaction.partial) { try { await reaction.fetch(); } catch { return; } }
         if (reaction.message.partial) { try { await reaction.message.fetch(); } catch { return; } }
 
-        const config = loadConfig();
-        if (reaction.message.id !== config.reactionMessageId) return;
+        // Tylko reakcje w kanale verify, na wiadomości bota
+        if (reaction.message.channelId !== config.verifyChannelId) return;
+        if (reaction.message.author?.id !== client.user.id) return;
 
         const guild = reaction.message.guild;
         const member = await guild.members.fetch(user.id).catch(() => null);
         if (!member) return;
 
-        const autoRoleId = config.autoRoleId || AUTO_ROLE_ID;
         let verifiedRoleId = null;
-
-        if (reaction.emoji.name === '🇵🇱' && config.rolePLId) {
-            verifiedRoleId = config.rolePLId;
-        } else if (reaction.emoji.name === '🇬🇧' && config.roleENId) {
-            verifiedRoleId = config.roleENId;
-        }
-
+        if (reaction.emoji.name === '🇵🇱') verifiedRoleId = config.rolePLId;
+        else if (reaction.emoji.name === '🇬🇧') verifiedRoleId = config.roleENId;
         if (!verifiedRoleId) return;
 
-        await member.roles.add(verifiedRoleId).catch(console.error);
-        if (member.roles.cache.has(autoRoleId)) {
-            await member.roles.remove(autoRoleId).catch(console.error);
+        await member.roles.add(verifiedRoleId).catch(e => console.error('add verified:', e.message));
+        if (member.roles.cache.has(config.autoRoleId)) {
+            await member.roles.remove(config.autoRoleId).catch(e => console.error('remove auto:', e.message));
         }
     });
 
@@ -44,33 +30,26 @@ module.exports = (client) => {
         if (reaction.partial) { try { await reaction.fetch(); } catch { return; } }
         if (reaction.message.partial) { try { await reaction.message.fetch(); } catch { return; } }
 
-        const config = loadConfig();
-        if (reaction.message.id !== config.reactionMessageId) return;
+        if (reaction.message.channelId !== config.verifyChannelId) return;
+        if (reaction.message.author?.id !== client.user.id) return;
 
         const guild = reaction.message.guild;
         const member = await guild.members.fetch(user.id).catch(() => null);
         if (!member) return;
 
-        const autoRoleId = config.autoRoleId || AUTO_ROLE_ID;
         let verifiedRoleId = null;
-
-        if (reaction.emoji.name === '🇵🇱' && config.rolePLId) {
-            verifiedRoleId = config.rolePLId;
-        } else if (reaction.emoji.name === '🇬🇧' && config.roleENId) {
-            verifiedRoleId = config.roleENId;
-        }
-
+        if (reaction.emoji.name === '🇵🇱') verifiedRoleId = config.rolePLId;
+        else if (reaction.emoji.name === '🇬🇧') verifiedRoleId = config.roleENId;
         if (!verifiedRoleId) return;
 
-        await member.roles.remove(verifiedRoleId).catch(console.error);
+        await member.roles.remove(verifiedRoleId).catch(e => console.error('remove verified:', e.message));
 
-        // Jeśli stracił obie rangi verified, przywróć auto-rangę
         const stillHasOther = (verifiedRoleId === config.rolePLId)
             ? member.roles.cache.has(config.roleENId)
             : member.roles.cache.has(config.rolePLId);
 
-        if (!stillHasOther && !member.roles.cache.has(autoRoleId)) {
-            await member.roles.add(autoRoleId).catch(console.error);
+        if (!stillHasOther && !member.roles.cache.has(config.autoRoleId)) {
+            await member.roles.add(config.autoRoleId).catch(e => console.error('readd auto:', e.message));
         }
     });
 };

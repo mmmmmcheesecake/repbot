@@ -1,21 +1,14 @@
 const { ChannelType } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
-
-function loadConfig() {
-    try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config.json'), 'utf8')); }
-    catch { return {}; }
-}
+const config = require('../config');
 
 module.exports = (client) => {
     client.on('messageCreate', async (message) => {
         if (message.author.bot) return;
         if (message.channel.isThread()) return;
 
-        const config = loadConfig();
         const chId = message.channel.id;
-        const isPL = chId === config.channels?.pl?.tickets;
-        const isEN = chId === config.channels?.en?.tickets;
+        const isPL = chId === config.channels.pl.tickets;
+        const isEN = chId === config.channels.en.tickets;
         if (!isPL && !isEN) return;
 
         const threadName = `ticket-${message.author.username}`;
