@@ -18,17 +18,18 @@ module.exports = (client) => {
         const guild = message.guild;
         const everyone = guild.roles.everyone.id;
 
-        // Rangi
-        let rolePL = guild.roles.cache.find(r => r.name === 'Verified PL - polski')
-            ?? await guild.roles.create({ name: 'Verified PL - polski', color: '#dc143c' });
+        // Istniejące rangi po ID
+        const rolePL = await guild.roles.fetch('1501690212827398175');
+        const roleEN = await guild.roles.fetch('1497213401276092477');
 
-        let roleEN = guild.roles.cache.find(r => r.name === 'Verified EN - angielski')
-            ?? await guild.roles.create({ name: 'Verified EN - angielski', color: '#012169' });
+        if (!rolePL || !roleEN) {
+            return message.reply('❌ Nie znaleziono rang. Sprawdź ID w setup.js.');
+        }
 
-        // Kanał #start — wszyscy widzą, nikt nie pisze
-        let startCh = guild.channels.cache.find(c => c.name === 'start' && c.type === ChannelType.GuildText)
+        // Kanał #verify — wszyscy widzą, nikt nie pisze
+        let startCh = guild.channels.cache.find(c => c.name === 'verify' && c.type === ChannelType.GuildText)
             ?? await guild.channels.create({
-                name: 'start',
+                name: 'verify',
                 type: ChannelType.GuildText,
                 permissionOverwrites: [
                     { id: everyone, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AddReactions], deny: [PermissionFlagsBits.SendMessages] },
