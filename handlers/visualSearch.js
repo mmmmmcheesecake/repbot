@@ -28,12 +28,7 @@ function formatPrice(result) {
     return `${p}${cur}`;
 }
 
-async function searchChannel(imgBuffer, contentType, fileName, channel) {
-    const fd = new FormData();
-    fd.append('image', new Blob([imgBuffer], { type: contentType }), fileName);
-    fd.append('channel', String(channel));
-    fd.append('page', '1');
-
+async function callApi(fd, channel) {
     const res = await fetch(API, {
         method: 'POST',
         body: fd,
@@ -42,11 +37,27 @@ async function searchChannel(imgBuffer, contentType, fileName, channel) {
     const raw = await res.text();
     try {
         const data = JSON.parse(raw);
-        return { channel, ok: res.ok && !data?.error, data };
+        return { channel, ok: res.ok && !data?.error, status: res.status, data };
     } catch {
         console.error('[visualSearch] non-JSON', channel, res.status, raw.slice(0, 200));
-        return { channel, ok: false };
+        return { channel, ok: false, status: res.status };
     }
+}
+
+async function searchWithImage(imgBuffer, contentType, fileName, channel) {
+    const fd = new FormData();
+    fd.append('image', new Blob([imgBuffer], { type: contentType }), fileName);
+    fd.append('channel', String(channel));
+    fd.append('page', '1');
+    return callApi(fd, channel);
+}
+
+async function searchWithImageId(imageId, channel) {
+    const fd = new FormData();
+    fd.append('imageId', imageId);
+    fd.append('channel', String(channel));
+    fd.append('page', '1');
+    return callApi(fd, channel);
 }
 
 module.exports = (client) => {
@@ -68,18 +79,25 @@ module.exports = (client) => {
             if (!imgRes.ok) throw new Error(`image download ${imgRes.status}`);
             const imgBuffer = await imgRes.arrayBuffer();
 
-            const channels = [3, 2, 1];
-            const responses = await Promise.all(
-                channels.map(c => searchChannel(imgBuffer, attachment.contentType, attachment.name, c))
-            );
+            const first = await searchWithImage(imgBuffer, attachment.contentType, attachment.name, 3);
+
+            if (!first.ok) {
+                console.error('[visualSearch] initial upload failed', first.status, first.data);
+                return thinking.edit(isEN ? '❌ Search failed. Try another image.' : '❌ Wyszukiwanie nie powiodło się.');
+            }
+
+            const responses = [first];
+
+            if (!first.data.results?.length && first.data.imageId) {
+                const [c2, c1] = await Promise.all([
+                    searchWithImageId(first.data.imageId, 2),
+                    searchWithImageId(first.data.imageId, 1),
+                ]);
+                responses.push(c2, c1);
+            }
 
             const withResults = responses.find(r => r.ok && r.data?.results?.length);
             if (!withResults) {
-                const allFailed = responses.every(r => !r.ok);
-                if (allFailed) {
-                    console.error('[visualSearch] all channels failed', responses.map(r => ({ ch: r.channel, status: r.data?.error })));
-                    return thinking.edit(isEN ? '❌ Search failed. Try another image.' : '❌ Wyszukiwanie nie powiodło się.');
-                }
                 return thinking.edit(isEN ? '📭 No matches found.' : '📭 Brak wyników.');
             }
 
