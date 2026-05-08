@@ -1,14 +1,29 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('../config');
 
-const API = 'https://replug24.com/api/visual-search';
-const HOST = 'https://replug24.com';
+const API = 'https://qcitems.com/api/image-search/internal';
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
-function toAbsolute(u) {
-    if (!u) return null;
-    if (u.startsWith('//')) return `https:${u}`;
-    if (u.startsWith('/')) return `${HOST}${u}`;
-    return u;
+function marketplaceToChannel(m) {
+    const x = (m || '').toLowerCase();
+    if (x === '1688' || x === 'alibaba') return 1;
+    if (x === 'taobao' || x === 'tmall') return 2;
+    if (x === 'weidian') return 3;
+    return 3;
+}
+
+function buildUsfansUrl(result) {
+    const id = result.goodsId || result.id;
+    if (!id) return null;
+    const channel = marketplaceToChannel(result.marketplace);
+    return `https://www.usfans.com/product/${channel}/${encodeURIComponent(id)}?ref=MGRSBE`;
+}
+
+function formatPrice(result) {
+    const p = result.discountPrice || result.price;
+    if (!p) return null;
+    const cur = result.currency ? ` ${result.currency}` : '';
+    return `${p}${cur}`;
 }
 
 module.exports = (client) => {
@@ -32,15 +47,20 @@ module.exports = (client) => {
 
             const formData = new FormData();
             formData.append('image', new Blob([imgBuffer], { type: attachment.contentType }), attachment.name);
+            formData.append('channel', '3');
+            formData.append('page', '1');
 
-            const res = await fetch(API, { method: 'POST', body: formData });
+            const res = await fetch(API, {
+                method: 'POST',
+                body: formData,
+                headers: { 'User-Agent': UA },
+            });
             const raw = await res.text();
 
             let data;
-            try {
-                data = JSON.parse(raw);
-            } catch {
-                console.error('[visualSearch] non-JSON response', res.status, raw.slice(0, 500));
+            try { data = JSON.parse(raw); }
+            catch {
+                console.error('[visualSearch] non-JSON response', res.status, raw.slice(0, 300));
                 return thinking.edit(isEN ? '❌ Search failed (invalid response).' : '❌ Wyszukiwanie nie powiodło się (nieprawidłowa odpowiedź).');
             }
 
@@ -49,24 +69,31 @@ module.exports = (client) => {
                 return thinking.edit(isEN ? '❌ Search failed. Try another image.' : '❌ Wyszukiwanie nie powiodło się.');
             }
 
-            const results = data.results || data.items || [];
+            const results = data.results || [];
             if (!results.length) {
                 return thinking.edit(isEN ? '📭 No matches found.' : '📭 Brak wyników.');
             }
 
             const best = results[0];
-            const title = best.title || best.name || (isEN ? 'Product' : 'Produkt');
-            const url = toAbsolute(best.url || best.link);
-            const price = best.price ? `$${best.price}` : null;
-            const productImg = toAbsolute(best.image || best.thumbnail || best.imageUrl);
+            const usfansUrl = buildUsfansUrl(best);
+            const title = best.title || (isEN ? 'Product' : 'Produkt');
+            const productImg = best.image;
+            const price = formatPrice(best);
+
+            if (!usfansUrl) {
+                console.error('[visualSearch] result has no id', best);
+                return thinking.edit(isEN ? '❌ Got result but no product id.' : '❌ Otrzymano wynik, ale brak ID produktu.');
+            }
+
+            const description = `**[${title.replace(/[<>]/g, '')}](${usfansUrl})**${price ? ` — ${price}` : ''}`;
 
             const embed = new EmbedBuilder()
                 .setColor(0x111111)
                 .setTitle(isEN ? '🖼️ Best match' : '🖼️ Najbardziej podobny')
-                .setURL(url)
-                .setDescription(`**[${title}](${url})**${price ? ` — ${price}` : ''}`)
+                .setURL(usfansUrl)
+                .setDescription(description)
                 .setThumbnail(attachment.url)
-                .setFooter({ text: 'replug24.com' });
+                .setFooter({ text: 'replug24.com • via USFans' });
 
             if (productImg) embed.setImage(productImg);
 
