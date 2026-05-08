@@ -1,8 +1,23 @@
 const { EmbedBuilder } = require('discord.js');
+const sharp = require('sharp');
 const config = require('../config');
 
 const API = 'https://qcitems.com/api/image-search/internal';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
+const MAX_UPLOAD_BYTES = 900 * 1024;
+const MAX_DIMENSION = 1280;
+
+async function downscaleIfNeeded(buffer) {
+    if (buffer.byteLength <= MAX_UPLOAD_BYTES) {
+        return { buffer, contentType: null, name: null };
+    }
+    const resized = await sharp(Buffer.from(buffer))
+        .rotate()
+        .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 82, mozjpeg: true })
+        .toBuffer();
+    return { buffer: resized, contentType: 'image/jpeg', name: 'upload.jpg' };
+}
 
 const CHANNEL_LABEL = { 1: '1688', 2: 'Taobao', 3: 'Weidian' };
 
@@ -77,9 +92,14 @@ module.exports = (client) => {
         try {
             const imgRes = await fetch(attachment.url);
             if (!imgRes.ok) throw new Error(`image download ${imgRes.status}`);
-            const imgBuffer = await imgRes.arrayBuffer();
+            const rawBuffer = await imgRes.arrayBuffer();
 
-            const first = await searchWithImage(imgBuffer, attachment.contentType, attachment.name, 3);
+            const downscaled = await downscaleIfNeeded(rawBuffer);
+            const uploadBuffer = downscaled.buffer;
+            const uploadType = downscaled.contentType || attachment.contentType;
+            const uploadName = downscaled.name || attachment.name;
+
+            const first = await searchWithImage(uploadBuffer, uploadType, uploadName, 3);
 
             if (!first.ok) {
                 console.error('[visualSearch] initial upload failed', first.status, first.data);
