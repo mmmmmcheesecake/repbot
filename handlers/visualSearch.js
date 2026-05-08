@@ -4,18 +4,20 @@ const config = require('../config');
 const API = 'https://qcitems.com/api/image-search/internal';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 
+const CHANNEL_LABEL = { 1: '1688', 2: 'Taobao', 3: 'Weidian' };
+
 function marketplaceToChannel(m) {
     const x = (m || '').toLowerCase();
     if (x === '1688' || x === 'alibaba') return 1;
     if (x === 'taobao' || x === 'tmall') return 2;
     if (x === 'weidian') return 3;
-    return 3;
+    return null;
 }
 
-function buildUsfansUrl(result) {
+function buildUsfansUrl(result, fallbackChannel) {
     const id = result.goodsId || result.id;
     if (!id) return null;
-    const channel = marketplaceToChannel(result.marketplace);
+    const channel = marketplaceToChannel(result.marketplace) || fallbackChannel;
     return `https://www.usfans.com/product/${channel}/${encodeURIComponent(id)}?ref=MGRSBE`;
 }
 
@@ -24,6 +26,27 @@ function formatPrice(result) {
     if (!p) return null;
     const cur = result.currency ? ` ${result.currency}` : '';
     return `${p}${cur}`;
+}
+
+async function searchChannel(imgBuffer, contentType, fileName, channel) {
+    const fd = new FormData();
+    fd.append('image', new Blob([imgBuffer], { type: contentType }), fileName);
+    fd.append('channel', String(channel));
+    fd.append('page', '1');
+
+    const res = await fetch(API, {
+        method: 'POST',
+        body: fd,
+        headers: { 'User-Agent': UA },
+    });
+    const raw = await res.text();
+    try {
+        const data = JSON.parse(raw);
+        return { channel, ok: res.ok && !data?.error, data };
+    } catch {
+        console.error('[visualSearch] non-JSON', channel, res.status, raw.slice(0, 200));
+        return { channel, ok: false };
+    }
 }
 
 module.exports = (client) => {
@@ -45,47 +68,34 @@ module.exports = (client) => {
             if (!imgRes.ok) throw new Error(`image download ${imgRes.status}`);
             const imgBuffer = await imgRes.arrayBuffer();
 
-            const formData = new FormData();
-            formData.append('image', new Blob([imgBuffer], { type: attachment.contentType }), attachment.name);
-            formData.append('channel', '3');
-            formData.append('page', '1');
+            const channels = [3, 2, 1];
+            const responses = await Promise.all(
+                channels.map(c => searchChannel(imgBuffer, attachment.contentType, attachment.name, c))
+            );
 
-            const res = await fetch(API, {
-                method: 'POST',
-                body: formData,
-                headers: { 'User-Agent': UA },
-            });
-            const raw = await res.text();
-
-            let data;
-            try { data = JSON.parse(raw); }
-            catch {
-                console.error('[visualSearch] non-JSON response', res.status, raw.slice(0, 300));
-                return thinking.edit(isEN ? '❌ Search failed (invalid response).' : '❌ Wyszukiwanie nie powiodło się (nieprawidłowa odpowiedź).');
-            }
-
-            if (!res.ok || data?.error) {
-                console.error('[visualSearch] API error', res.status, data);
-                return thinking.edit(isEN ? '❌ Search failed. Try another image.' : '❌ Wyszukiwanie nie powiodło się.');
-            }
-
-            const results = data.results || [];
-            if (!results.length) {
+            const withResults = responses.find(r => r.ok && r.data?.results?.length);
+            if (!withResults) {
+                const allFailed = responses.every(r => !r.ok);
+                if (allFailed) {
+                    console.error('[visualSearch] all channels failed', responses.map(r => ({ ch: r.channel, status: r.data?.error })));
+                    return thinking.edit(isEN ? '❌ Search failed. Try another image.' : '❌ Wyszukiwanie nie powiodło się.');
+                }
                 return thinking.edit(isEN ? '📭 No matches found.' : '📭 Brak wyników.');
             }
 
-            const best = results[0];
-            const usfansUrl = buildUsfansUrl(best);
-            const title = best.title || (isEN ? 'Product' : 'Produkt');
-            const productImg = best.image;
-            const price = formatPrice(best);
-
+            const best = withResults.data.results[0];
+            const usfansUrl = buildUsfansUrl(best, withResults.channel);
             if (!usfansUrl) {
                 console.error('[visualSearch] result has no id', best);
                 return thinking.edit(isEN ? '❌ Got result but no product id.' : '❌ Otrzymano wynik, ale brak ID produktu.');
             }
 
-            const description = `**[${title.replace(/[<>]/g, '')}](${usfansUrl})**${price ? ` — ${price}` : ''}`;
+            const title = (best.title || (isEN ? 'Product' : 'Produkt')).replace(/[<>]/g, '');
+            const productImg = best.image;
+            const price = formatPrice(best);
+            const sourceLabel = CHANNEL_LABEL[withResults.channel] || '';
+
+            const description = `**[${title}](${usfansUrl})**${price ? ` — ${price}` : ''}`;
 
             const embed = new EmbedBuilder()
                 .setColor(0x111111)
@@ -93,7 +103,7 @@ module.exports = (client) => {
                 .setURL(usfansUrl)
                 .setDescription(description)
                 .setThumbnail(attachment.url)
-                .setFooter({ text: 'replug24.com • via USFans' });
+                .setFooter({ text: `${sourceLabel} • replug24.com` });
 
             if (productImg) embed.setImage(productImg);
 
