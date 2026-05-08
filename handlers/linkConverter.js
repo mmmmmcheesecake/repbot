@@ -8,16 +8,28 @@ function extractUrl(text) {
     return match ? match[0] : null;
 }
 
-function detectPlatform(url) {
-    if (url.includes('weidian.com')) return 'Weidian';
-    if (url.includes('taobao.com')) return 'Taobao';
-    if (url.includes('1688.com')) return '1688';
-    if (url.includes('tmall.com')) return 'Tmall';
+function parseProduct(url) {
+    if (url.includes('weidian.com')) {
+        const id = url.match(/[?&]itemID=(\d+)/i)?.[1];
+        return id ? { platform: 'Weidian', channel: 3, id } : null;
+    }
+    if (url.includes('taobao.com')) {
+        const id = url.match(/[?&]id=(\d+)/i)?.[1];
+        return id ? { platform: 'Taobao', channel: 2, id } : null;
+    }
+    if (url.includes('tmall.com')) {
+        const id = url.match(/[?&]id=(\d+)/i)?.[1];
+        return id ? { platform: 'Tmall', channel: 2, id } : null;
+    }
+    if (url.includes('1688.com')) {
+        const id = url.match(/\/offer\/(\d+)\.html/i)?.[1];
+        return id ? { platform: '1688', channel: 1, id } : null;
+    }
     return null;
 }
 
-function buildUsfansLink(originalUrl) {
-    return `https://www.usfans.com/search?keyword=${encodeURIComponent(originalUrl)}&ref=${REF}`;
+function buildUsfansLink({ channel, id }) {
+    return `https://www.usfans.com/product/${channel}/${id}?ref=${REF}`;
 }
 
 module.exports = (client) => {
@@ -32,15 +44,15 @@ module.exports = (client) => {
         const url = extractUrl(message.content);
         if (!url) return;
 
-        const platform = detectPlatform(url);
-        if (!platform) return;
+        const product = parseProduct(url);
+        if (!product) return;
 
         const embed = new EmbedBuilder()
             .setColor(0x111111)
             .setTitle(isEN ? '🔗 Link converted' : '🔗 Skonwertowany link')
             .addFields(
-                { name: isEN ? 'Platform' : 'Platforma', value: platform, inline: true },
-                { name: 'USFans', value: `[${isEN ? 'Open on USFans →' : 'Otwórz na USFans →'}](${buildUsfansLink(url)})`, inline: true },
+                { name: isEN ? 'Platform' : 'Platforma', value: product.platform, inline: true },
+                { name: 'USFans', value: `[${isEN ? 'Open on USFans →' : 'Otwórz na USFans →'}](${buildUsfansLink(product)})`, inline: true },
             )
             .setFooter({ text: `replug24.com • ref: ${REF}` });
 

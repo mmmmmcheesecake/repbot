@@ -30,9 +30,18 @@ module.exports = (client) => {
 
         try {
             const res = await fetch(`${API}?url=${encodeURIComponent(productUrl)}`);
-            const data = await res.json();
+            const raw = await res.text();
+
+            let data;
+            try {
+                data = JSON.parse(raw);
+            } catch {
+                console.error('[qcSearch] non-JSON response', res.status, raw.slice(0, 500));
+                return thinking.edit(isEN ? '❌ Could not load QC photos (invalid response).' : '❌ Nie udało się pobrać zdjęć QC (nieprawidłowa odpowiedź).');
+            }
 
             if (!res.ok || data?.error) {
+                console.error('[qcSearch] API error', res.status, data);
                 return thinking.edit(isEN ? '❌ Could not load QC photos.' : '❌ Nie udało się pobrać zdjęć QC.');
             }
 
@@ -40,26 +49,37 @@ module.exports = (client) => {
                 return thinking.edit(isEN ? '📭 No QC photos found.' : '📭 Brak zdjęć QC dla tego produktu.');
             }
 
-            const firstPhoto = data.sets[0].photos[0];
-            const imgUrl = proxyImg(firstPhoto.url);
+            const photoLabel = isEN ? 'photos' : 'zdjęć';
 
-            const lines = data.sets.map(s =>
-                `**${s.sourceLabel}** — ${s.photos.length} ${isEN ? 'photos' : 'zdjęć'}`
-            ).join('\n');
+            const embeds = data.sets.slice(0, 10).map((s, i) => {
+                const firstPhoto = s.photos[0];
+                const imgUrl = proxyImg(firstPhoto.url);
+                const linkUrl = s.url || firstPhoto.url;
 
-            const embed = new EmbedBuilder()
-                .setColor(0x111111)
-                .setTitle(isEN
-                    ? `QC Photos — ${data.totalPhotos} from ${data.sources.join(', ')}`
-                    : `Zdjęcia QC — ${data.totalPhotos} z ${data.sources.join(', ')}`)
-                .setImage(imgUrl)
-                .setFooter({ text: `${data.sets[0].sourceLabel} • replug24.com` });
+                const eb = new EmbedBuilder()
+                    .setColor(0x111111)
+                    .setTitle(`${s.sourceLabel} — ${s.photos.length} ${photoLabel}`)
+                    .setURL(linkUrl)
+                    .setImage(imgUrl);
 
-            await thinking.edit({ content: lines, embeds: [embed] });
+                if (i === 0) {
+                    eb.setAuthor({
+                        name: isEN
+                            ? `QC Photos — ${data.totalPhotos} from ${data.sources.join(', ')}`
+                            : `Zdjęcia QC — ${data.totalPhotos} z ${data.sources.join(', ')}`,
+                    });
+                }
+                if (i === Math.min(data.sets.length, 10) - 1) {
+                    eb.setFooter({ text: 'replug24.com' });
+                }
+                return eb;
+            });
+
+            await thinking.edit({ content: '', embeds });
 
         } catch (e) {
-            console.error(e);
-            await thinking.edit('❌ Error. Try again.');
+            console.error('[qcSearch] exception', e);
+            await thinking.edit(isEN ? '❌ Error. Try again.' : '❌ Wystąpił błąd. Spróbuj ponownie.');
         }
     });
 };
