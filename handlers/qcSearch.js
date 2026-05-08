@@ -2,15 +2,13 @@ const { EmbedBuilder } = require('discord.js');
 const config = require('../config');
 
 const API = 'https://replug24.com/api/qc';
-const IMG_API = 'https://replug24.com/api/qcimg';
+const HOST = 'https://replug24.com';
 
-function b64url(s) {
-    return Buffer.from(s).toString('base64')
-        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function proxyImg(url) {
-    return `${IMG_API}?u=${b64url(url)}`;
+function toAbsolute(u) {
+    if (!u) return null;
+    if (u.startsWith('//')) return `https:${u}`;
+    if (u.startsWith('/')) return `${HOST}${u}`;
+    return u;
 }
 
 module.exports = (client) => {
@@ -53,14 +51,14 @@ module.exports = (client) => {
 
             const embeds = data.sets.slice(0, 10).map((s, i) => {
                 const firstPhoto = s.photos[0];
-                const imgUrl = proxyImg(firstPhoto.url);
-                const linkUrl = s.url || firstPhoto.url;
+                const photoUrl = toAbsolute(firstPhoto.url);
+                const linkUrl = toAbsolute(s.url) || photoUrl;
 
                 const eb = new EmbedBuilder()
                     .setColor(0x111111)
                     .setTitle(`${s.sourceLabel} — ${s.photos.length} ${photoLabel}`)
                     .setURL(linkUrl)
-                    .setImage(imgUrl);
+                    .setImage(photoUrl);
 
                 if (i === 0) {
                     eb.setAuthor({

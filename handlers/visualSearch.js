@@ -2,6 +2,14 @@ const { EmbedBuilder } = require('discord.js');
 const config = require('../config');
 
 const API = 'https://replug24.com/api/visual-search';
+const HOST = 'https://replug24.com';
+
+function toAbsolute(u) {
+    if (!u) return null;
+    if (u.startsWith('//')) return `https:${u}`;
+    if (u.startsWith('/')) return `${HOST}${u}`;
+    return u;
+}
 
 module.exports = (client) => {
     client.on('messageCreate', async (message) => {
@@ -48,9 +56,9 @@ module.exports = (client) => {
 
             const best = results[0];
             const title = best.title || best.name || (isEN ? 'Product' : 'Produkt');
-            const url = best.url || best.link;
+            const url = toAbsolute(best.url || best.link);
             const price = best.price ? `$${best.price}` : null;
-            const productImg = best.image || best.thumbnail || best.imageUrl;
+            const productImg = toAbsolute(best.image || best.thumbnail || best.imageUrl);
 
             const embed = new EmbedBuilder()
                 .setColor(0x111111)
