@@ -17,6 +17,7 @@ client.once('clientReady', () => {
 });
 
 require('./handlers/setup')(client);
+require('./handlers/say')(client);
 require('./handlers/autoRole')(client);
 require('./handlers/reactionRoles')(client);
 require('./handlers/linkConverter')(client);
