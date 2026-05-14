@@ -6,6 +6,7 @@ module.exports = {
     roleENId:   '1497213401276092477',
 
     verifyChannelId: '1497196597207892012',
+    proxyTicketEmoji: '\uD83C\uDFAB',
 
     channels: {
         pl: {
