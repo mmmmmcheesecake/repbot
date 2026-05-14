@@ -4,6 +4,7 @@ module.exports = {
     autoRoleId: '1497207039422894151',
     rolePLId:   '1501690212827398175',
     roleENId:   '1497213401276092477',
+    ticketStaffRoleId: '1497211344116519042',
 
     verifyChannelId: '1497196597207892012',
     proxyTicketEmoji: '\uD83C\uDFAB',

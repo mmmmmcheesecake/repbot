@@ -82,6 +82,26 @@ async function findOpenTicket(channel, user, type) {
     return threads.find(t => !t.archived && t.name.startsWith(prefix) && t.name.endsWith(suffix));
 }
 
+async function addTicketStaffMembers(thread) {
+    const guild = thread.guild;
+    const role = await guild.roles.fetch(config.ticketStaffRoleId).catch(err => {
+        console.error('fetch ticket staff role:', err.message);
+        return null;
+    });
+    if (!role) return;
+
+    await guild.members.fetch().catch(err => {
+        console.error('fetch guild members for ticket staff:', err.message);
+    });
+
+    const staffMembers = role.members.filter(member => !member.user.bot);
+    for (const member of staffMembers.values()) {
+        await thread.members.add(member.id).catch(err => {
+            console.error(`add ticket staff ${member.id}:`, err.message);
+        });
+    }
+}
+
 async function createTicket(channel, user, target) {
     const existing = await findOpenTicket(channel, user, target.type);
     if (existing) return { thread: existing, created: false };
@@ -94,6 +114,7 @@ async function createTicket(channel, user, target) {
     });
 
     await thread.members.add(user.id);
+    await addTicketStaffMembers(thread);
     await thread.send(target.lang === 'en'
         ? `Hey ${user}, ${target.data.openText.en}`
         : `Czesc ${user}, ${target.data.openText.pl}`
