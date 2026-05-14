@@ -7,6 +7,7 @@ module.exports = {
 
     verifyChannelId: '1497196597207892012',
     proxyTicketEmoji: '\uD83C\uDFAB',
+    devTicketEmoji: '\uD83C\uDFAB',
 
     channels: {
         pl: {
@@ -15,6 +16,7 @@ module.exports = {
             visualSearch: '1501700275310956564',
             tracking:     '1501700750634651761',
             tickets:      '1501696553247571988',
+            devTickets:   '1504437469557559497',
         },
         en: {
             konwerter:    '1501001540524183562',
@@ -22,6 +24,7 @@ module.exports = {
             visualSearch: '1501002302796988496',
             tracking:     '1501186060720410664',
             tickets:      '1501192287210836039',
+            devTickets:   '1504437120515833966',
         },
     },
 };
