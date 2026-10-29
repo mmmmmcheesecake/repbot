@@ -285,3 +285,5 @@ module.exports = (client) => {
         ].join('\n'));
     });
 };
+
+module.exports.loadCatalog = loadCatalog;

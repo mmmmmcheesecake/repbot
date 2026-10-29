@@ -27,5 +27,6 @@ require('./handlers/visualSearch')(client);
 require('./handlers/tickets')(client);
 require('./handlers/socialFeed')(client);
 require('./handlers/saleFeed')(client);
+require('./handlers/qcArchive')(client);
 
 client.login(process.env.TOKEN);
