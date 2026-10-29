@@ -63,7 +63,7 @@ async function fetchLatest(source, count = 15) {
     if (!entry) throw new Error(`brak tokenu ${source.tokenEnv}`);
     entry = await refreshIfDue(source, entry);
 
-    const fields = 'id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp';
+    const fields = 'id,caption,media_product_type,permalink,timestamp';
     const res = await fetch(`${GRAPH}/me/media?fields=${fields}&limit=${count}&access_token=${encodeURIComponent(entry.token)}`);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`Instagram API ${res.status}: ${data.error?.message || 'unknown'}`);
@@ -75,11 +75,6 @@ async function fetchLatest(source, count = 15) {
             url: m.permalink,
             createdAt: Date.parse(m.timestamp),
             caption: m.caption || '',
-            videoUrl: m.media_url || null,
-            coverUrl: m.thumbnail_url || null,
-            imageUrls: [],
-            transcriptUrl: null,
-            requestHeaders: {},
         }))
         .sort((a, b) => b.createdAt - a.createdAt);
 }

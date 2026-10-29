@@ -2,7 +2,6 @@ const { PermissionFlagsBits } = require('discord.js');
 const config = require('../config');
 const tiktok = require('../social/tiktok');
 const instagram = require('../social/instagram');
-const { describe } = require('../social/describe');
 
 const POLL_MS = 10 * 60 * 1000;
 const MAX_AGE_MS = 48 * 3600 * 1000;
@@ -14,14 +13,12 @@ const TEXT = {
     en: {
         tiktok: { icon: '🎵', label: 'NEW TIKTOK DROP' },
         instagram: { icon: '📸', label: 'NEW REEL DROP' },
-        topFinds: 'TOP FINDS',
         links: 'All links',
         watch: 'Watch now',
     },
     pl: {
         tiktok: { icon: '🎵', label: 'NOWY TIKTOK' },
         instagram: { icon: '📸', label: 'NOWA ROLKA' },
-        topFinds: 'NAJLEPSZE FINDSY',
         links: 'Wszystkie linki',
         watch: 'Oglądaj',
     },
@@ -44,24 +41,13 @@ function captionSummary(caption) {
     return first.length > 160 ? first.slice(0, 157) + '…' : first;
 }
 
-function buildMessage(source, post, info) {
+function buildMessage(source, post) {
     const t = TEXT[source.lang];
     const p = t[source.platform];
     const lines = ['@everyone', `## ${p.icon} ${boldSans(p.label)} ${p.icon}`];
 
-    if (info) {
-        lines.push(`# 🔥 ${info.headline.toUpperCase()}`);
-        lines.push(`> **${info.summary}**`);
-        if (info.items.length) {
-            lines.push('', `**💎 ${boldSans(t.topFinds)}**`);
-            for (const item of info.items) {
-                lines.push(`${item.emoji} **${item.name}**${item.price ? ` ┃ \`${item.price}\`` : ''}`);
-            }
-        }
-    } else {
-        const summary = captionSummary(post.caption);
-        if (summary) lines.push(`> **${summary}**`);
-    }
+    const summary = captionSummary(post.caption);
+    if (summary) lines.push(`> **${summary}**`);
 
     lines.push('', `🛒 **${t.links} ➜ <https://replug24.com>**`);
     lines.push(`▶️ **${t.watch}:** ${post.url}`);
@@ -82,10 +68,8 @@ async function seedFromHistory(client, source, st) {
 }
 
 async function publish(client, source, post, { ping = true, channelOverride = null } = {}) {
-    const transcript = source.platform === 'tiktok' ? await tiktok.fetchTranscript(post).catch(() => '') : '';
-    const info = await describe(post, source.lang, transcript);
     const channel = channelOverride || await client.channels.fetch(source.channelId);
-    let content = buildMessage(source, post, info);
+    let content = buildMessage(source, post);
     if (!ping) content = content.replace('@everyone\n', '');
     await channel.send({ content, allowedMentions: { parse: ping ? ['everyone'] : [] } });
 }

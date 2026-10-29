@@ -14,18 +14,6 @@ async function getSecUid(username) {
     return m[1];
 }
 
-function cookieHeader(res) {
-    const list = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [];
-    return list.map(c => c.split(';')[0]).join('; ');
-}
-
-function pickSubtitle(video, lang) {
-    const subs = video.subtitleInfos || [];
-    const want = lang === 'pl' ? 'pol' : 'eng';
-    const sub = subs.find(s => (s.LanguageCodeName || '').startsWith(want)) || subs[0];
-    return sub ? sub.Url : null;
-}
-
 // Newest videos of a profile, newest first.
 async function fetchLatest(source, count = 15) {
     const secUid = await getSecUid(source.username);
@@ -35,7 +23,6 @@ async function fetchLatest(source, count = 15) {
     const text = await res.text();
     if (!text) throw new Error('TikTok item_list: empty response (blocked?)');
     const data = JSON.parse(text);
-    const cookie = cookieHeader(res);
 
     return (data.itemList || [])
         .filter(it => !it.privateItem && !it.secret)
@@ -44,24 +31,8 @@ async function fetchLatest(source, count = 15) {
             url: `https://www.tiktok.com/@${source.username}/${it.imagePost ? 'photo' : 'video'}/${it.id}`,
             createdAt: it.createTime * 1000,
             caption: it.desc || '',
-            videoUrl: it.video?.playAddr || it.video?.downloadAddr || null,
-            coverUrl: it.video?.cover || null,
-            imageUrls: (it.imagePost?.images || []).map(im => im.imageURL?.urlList?.[0]).filter(Boolean),
-            transcriptUrl: pickSubtitle(it.video || {}, source.lang),
-            requestHeaders: cookie ? { ...HEADERS, Cookie: cookie } : HEADERS,
         }))
         .sort((a, b) => b.createdAt - a.createdAt);
 }
 
-async function fetchTranscript(post) {
-    if (!post.transcriptUrl) return '';
-    const res = await fetch(post.transcriptUrl, { headers: post.requestHeaders });
-    if (!res.ok) return '';
-    const vtt = await res.text();
-    return vtt
-        .split(/\r?\n/)
-        .filter(l => l && l !== 'WEBVTT' && !l.includes('-->') && !/^\d+$/.test(l))
-        .join(' ');
-}
-
-module.exports = { fetchLatest, fetchTranscript };
+module.exports = { fetchLatest };
