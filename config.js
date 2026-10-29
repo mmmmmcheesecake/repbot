@@ -37,4 +37,10 @@ module.exports = {
         { platform: 'tiktok',    username: 'kasjo_replug24',           lang: 'pl', channelId: '1501698520481136801' },
         { platform: 'instagram', username: 'mmmmmcheesecake',          lang: 'pl', channelId: '1501698783015206972', tokenEnv: 'IG_TOKEN_PL' },
     ],
+
+    // Obniżki cen z katalogu replug24 -> kanały sale / promocje. minDrop w walucie kanału (EN: $, PL: zł).
+    saleFeed: [
+        { lang: 'en', channelId: '1500997782465544222', minDrop: 5 },
+        { lang: 'pl', channelId: '1501697061421191429', minDrop: 20 },
+    ],
 };

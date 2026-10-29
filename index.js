@@ -26,5 +26,6 @@ require('./handlers/tracking')(client);
 require('./handlers/visualSearch')(client);
 require('./handlers/tickets')(client);
 require('./handlers/socialFeed')(client);
+require('./handlers/saleFeed')(client);
 
 client.login(process.env.TOKEN);

@@ -199,3 +199,4 @@ module.exports = (client) => {
 };
 
 module.exports.buildMessage = buildMessage;
+module.exports.boldSans = boldSans;
