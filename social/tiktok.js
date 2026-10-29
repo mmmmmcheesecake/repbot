@@ -14,8 +14,9 @@ async function getSecUid(username) {
     return m[1];
 }
 
-// Newest videos of a profile, newest first.
+// Newest videos of a profile, newest first. TikTok returns 400 for count > 15.
 async function fetchLatest(source, count = 15) {
+    count = Math.min(count, 15);
     const secUid = await getSecUid(source.username);
     const url = `https://www.tiktok.com/api/creator/item_list/?aid=1988&count=${count}&cursor=0&type=1&secUid=${encodeURIComponent(secUid)}`;
     const res = await fetch(url, { headers: HEADERS });

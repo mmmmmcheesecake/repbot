@@ -114,7 +114,7 @@ async function findPost(url) {
     for (const source of activeSources()) {
         if (source.platform === 'tiktok' && !url.includes(`tiktok.com/@${source.username}/`)) continue;
         if (source.platform === 'instagram' && !url.includes('instagram.com/')) continue;
-        const posts = await PLATFORMS[source.platform].fetchLatest(source, 30);
+        const posts = await PLATFORMS[source.platform].fetchLatest(source, 15);
         const post = posts.find(p => url.includes(p.id));
         if (post) return { source, post };
     }
@@ -158,7 +158,7 @@ module.exports = (client) => {
         await message.channel.sendTyping().catch(() => {});
         try {
             const found = await findPost(url);
-            if (!found) return message.reply('❌ Nie znalazłem tego filmiku wśród ostatnich 30 z obserwowanych kont.');
+            if (!found) return message.reply('❌ Nie znalazłem tego filmiku wśród ostatnich 15 z obserwowanych kont.');
             if (sub === 'preview') {
                 await publish(client, found.source, found.post, { ping: false, channelOverride: message.channel });
             } else {
