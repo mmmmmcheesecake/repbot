@@ -36,7 +36,7 @@ function boldSans(str) {
 }
 
 function captionSummary(caption) {
-    const clean = caption.replace(/#\S+/g, '').replace(/\s+/g, ' ').trim();
+    const clean = caption.replace(/[#@]\S+/g, '').replace(/\s+/g, ' ').trim();
     const first = clean.split(/(?<=[.!?])\s/)[0] || '';
     return first.length > 160 ? first.slice(0, 157) + '…' : first;
 }

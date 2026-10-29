@@ -34,6 +34,7 @@ module.exports = {
         { platform: 'tiktok',    username: 'replug24.com',             lang: 'en', channelId: '1497241119795449926' },
         { platform: 'instagram', username: 'replug24',                 lang: 'en', channelId: '1497241816800563301', tokenEnv: 'IG_TOKEN_EN' },
         { platform: 'tiktok',    username: 'mmmmmcheesecake.replug24', lang: 'pl', channelId: '1501698520481136801' },
+        { platform: 'tiktok',    username: 'kasjo_replug24',           lang: 'pl', channelId: '1501698520481136801' },
         { platform: 'instagram', username: 'mmmmmcheesecake',          lang: 'pl', channelId: '1501698783015206972', tokenEnv: 'IG_TOKEN_PL' },
     ],
 };
