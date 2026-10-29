@@ -6,7 +6,7 @@ const ffmpegPath = require('ffmpeg-static');
 const sharp = require('sharp');
 const Anthropic = require('@anthropic-ai/sdk');
 
-const MODEL = process.env.SOCIAL_AI_MODEL || 'claude-opus-5-5';
+const MODEL = process.env.SOCIAL_AI_MODEL || 'claude-haiku-5-5';
 const MAX_FRAMES = 16;
 const MAX_VIDEO_BYTES = 60 * 1024 * 1024;
 
@@ -50,7 +50,7 @@ Return:
   - price: exactly as shown on screen next to that item, keeping the currency (e.g. "$33", "149 zł", "¥199").
     If no price is visible for the item, use "". Never guess or convert a price.
   - emoji: one emoji that fits the item.
-Only include items that really appear in the post. Write headline, summary and names in ${LANG_NAME[lang]}
+Only include items that really appear in the post, each item once (the same item seen in several frames is one item). Write headline, summary and names in ${LANG_NAME[lang]}
 (brand names stay as they are).`;
 
 function run(cmd, args) {
@@ -141,7 +141,13 @@ async function describe(post, lang, transcript) {
         }
         const text = response.content.find(b => b.type === 'text')?.text;
         const out = JSON.parse(text);
-        out.items = (out.items || []).filter(i => i.name).slice(0, 5);
+        const names = new Set();
+        out.items = (out.items || [])
+            .filter(i => i.name && !names.has(i.name.toLowerCase()) && names.add(i.name.toLowerCase()))
+            .sort((a, b) => Boolean(b.price) - Boolean(a.price))
+            .slice(0, 5);
+        // przedmiot + cena: bez ceny tylko wtedy, gdy z cenami są mniej niż 3
+        if (out.items.filter(i => i.price).length >= 3) out.items = out.items.filter(i => i.price);
         console.log(`[social] opis AI ${post.id}: ${frames.length} klatek, in=${response.usage.input_tokens} out=${response.usage.output_tokens}`);
         return out;
     } catch (err) {
