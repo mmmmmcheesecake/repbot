@@ -46,7 +46,7 @@ function buildMessage(source, post) {
     const p = t[source.platform];
     const lines = ['@everyone', `## ${p.icon} ${boldSans(p.label)} ${p.icon}`];
 
-    const summary = captionSummary(post.caption);
+    const summary = post.summary || captionSummary(post.caption);
     if (summary) lines.push(`> **${summary}**`);
 
     lines.push('', `🛒 **${t.links} ➜ <https://replug24.com>**`);
@@ -125,7 +125,31 @@ const USAGE =
     'Użycie:\n' +
     '`!feed` — status i sprawdzenie nowych filmików teraz\n' +
     '`!feed preview <link>` — podgląd wiadomości tutaj (bez @everyone)\n' +
-    '`!feed post <link>` — wrzuć filmik na jego kanał (np. starszy, pominięty)';
+    '`!feed post <link>` — wrzuć filmik na jego kanał (np. starszy, pominięty)\n' +
+    '`!feed ig <en|pl> <link> [opis]` — wrzuć rolkę z IG na kanał EN/PL (opis opcjonalny)';
+
+const IG_LINK = /instagram\.com\/(?:[^/\s]+\/)?(reel|reels|p)\/([A-Za-z0-9_-]+)/;
+
+// Ręczne wrzucenie rolki, dopóki Meta nie pozwala wygenerować tokenu do automatu
+async function postInstagramManually(client, message) {
+    const [, , lang, link] = message.content.trim().split(/\s+/);
+    const source = config.socialFeed.find(s => s.platform === 'instagram' && s.lang === lang.toLowerCase());
+    const m = link?.match(IG_LINK);
+    if (!source || !m) return message.reply(USAGE);
+    const code = m[2];
+
+    const st = state.get(keyOf(source));
+    if (!st.seeded) await seedFromHistory(client, source, st);
+    if (st.seen.has(code)) return message.reply(`ℹ️ Ta rolka już jest na <#${source.channelId}>.`);
+
+    const summary = message.content.slice(message.content.indexOf(link) + link.length).replace(/\s+/g, ' ').trim();
+    const url = `https://www.instagram.com/${m[1] === 'p' ? 'p' : 'reel'}/${code}/`;
+    await publish(client, source, { id: code, url, caption: '', summary });
+    st.seen.add(code);
+
+    if (message.channelId === source.channelId) await message.delete().catch(() => {});
+    else await message.reply(`✅ Wrzucone na <#${source.channelId}>.`);
+}
 
 module.exports = (client) => {
     for (const s of config.socialFeed) state.set(keyOf(s), { seen: new Set(), lastCheck: null, lastError: null, seeded: false });
@@ -146,17 +170,18 @@ module.exports = (client) => {
             await checkAll(client);
             const lines = config.socialFeed.map(s => {
                 const st = state.get(keyOf(s));
-                if (s.platform === 'instagram' && !instagram.hasToken(s)) return `⚪ ${s.platform} @${s.username} — brak tokenu \`${s.tokenEnv}\``;
+                if (s.platform === 'instagram' && !instagram.hasToken(s)) return `⚪ ${s.platform} @${s.username} — brak tokenu \`${s.tokenEnv}\`, wrzucaj ręcznie: \`!feed ig ${s.lang} <link>\``;
                 const when = st.lastCheck ? `<t:${Math.floor(st.lastCheck / 1000)}:R>` : '—';
                 return `${st.lastError ? '🔴' : '🟢'} ${s.platform} @${s.username} → <#${s.channelId}> · sprawdzono ${when}${st.lastError ? ` · \`${st.lastError}\`` : ''}`;
             });
             return message.reply(lines.join('\n') + '\n\n' + USAGE);
         }
 
-        if ((sub !== 'preview' && sub !== 'post') || !url) return message.reply(USAGE);
+        if (!['preview', 'post', 'ig'].includes(sub) || !url) return message.reply(USAGE);
 
         await message.channel.sendTyping().catch(() => {});
         try {
+            if (sub === 'ig') return await postInstagramManually(client, message);
             const found = await findPost(url);
             if (!found) return message.reply('❌ Nie znalazłem tego filmiku wśród ostatnich 15 z obserwowanych kont.');
             if (sub === 'preview') {
