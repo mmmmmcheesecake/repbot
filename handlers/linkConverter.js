@@ -1,7 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('../config');
 
-const REF = 'MGRSBE';
+const REF = 'REPLUG';
 
 function extractUrl(text) {
     const match = text.match(/https?:\/\/[^\s]+/);

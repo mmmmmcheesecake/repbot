@@ -33,7 +33,7 @@ function buildUsfansUrl(result, fallbackChannel) {
     const id = result.goodsId || result.id;
     if (!id) return null;
     const channel = marketplaceToChannel(result.marketplace) || fallbackChannel;
-    return `https://www.usfans.com/product/${channel}/${encodeURIComponent(id)}?ref=MGRSBE`;
+    return `https://www.usfans.com/product/${channel}/${encodeURIComponent(id)}?ref=REPLUG`;
 }
 
 function formatPrice(result) {
